@@ -1,0 +1,277 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Application Details | E-Clearance</title>
+
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+
+    <style>
+        .details-container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .details-header {
+            margin-bottom: 30px;
+        }
+
+        .details-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 22px;
+            margin-top: 20px;
+        }
+
+        .info-item span {
+            display: block;
+            color: #777;
+            font-size: 14px;
+            margin-bottom: 7px;
+        }
+
+        .info-item strong {
+            color: #222;
+        }
+
+        .status-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .status-table th,
+        .status-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .status-table th {
+            background: #f5f7fb;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .PENDING {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .UNDER_REVIEW {
+            background: #cfe2ff;
+            color: #084298;
+        }
+
+        .CLEARED {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .REJECTED {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .back-button:hover {
+            background: #1d4ed8;
+        }
+
+        @media (max-width: 650px) {
+            .table-wrapper {
+                overflow-x: auto;
+            }
+
+            .status-table {
+                min-width: 750px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="details-container">
+
+        <!-- Header -->
+        <div class="details-header">
+            <h1>Application Details</h1>
+            <p>View the complete information and verification progress of your application.</p>
+        </div>
+
+        <!-- Student Information -->
+        <div class="details-card">
+
+            <h2>Student Information</h2>
+
+            <div class="details-grid">
+
+                <div class="info-item">
+                    <span>Student Name</span>
+                    <strong th:text="${student.user.name}">Student Name</strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Roll Number</span>
+                    <strong th:text="${student.rollNumber}">Roll Number</strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Course</span>
+                    <strong th:text="${student.course}">Course</strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Branch</span>
+                    <strong th:text="${student.branch}">Branch</strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Semester</span>
+                    <strong th:text="${student.semester}">Semester</strong>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Application Information -->
+        <div class="details-card">
+
+            <h2>Application Information</h2>
+
+            <div class="details-grid">
+
+                <div class="info-item">
+                    <span>Application ID</span>
+                    <strong th:text="${request.id}">1</strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Application Date</span>
+                    <strong th:text="${#temporals.format(request.requestDate, 'dd-MM-yyyy HH:mm')}">
+                        Date
+                    </strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Overall Status</span>
+                    <strong>
+                        <span class="badge"
+                              th:classappend="${request.overallStatus}"
+                              th:text="${request.overallStatus}">
+                            PENDING
+                        </span>
+                    </strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Completion Date</span>
+                    <strong th:text="${request.completionDate != null ? #temporals.format(request.completionDate, 'dd-MM-yyyy HH:mm') : 'Not completed'}">
+                        Not completed
+                    </strong>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Department Verification -->
+        <div class="details-card">
+
+            <h2>Department-wise Verification</h2>
+
+            <div class="table-wrapper">
+
+                <table class="status-table">
+
+                    <thead>
+                        <tr>
+                            <th>Department / Authority</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                            <th>Verified By</th>
+                            <th>Verification Date</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        <tr th:each="verification : ${verifications}">
+
+                            <td th:text="${verification.authorityName}">
+                                Library
+                            </td>
+
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${verification.status}"
+                                      th:text="${verification.status}">
+                                    PENDING
+                                </span>
+                            </td>
+
+                            <td th:text="${verification.remarks != null ? verification.remarks : 'No remarks yet'}">
+                                No remarks yet
+                            </td>
+
+                            <td th:text="${verification.verifiedBy != null ? verification.verifiedBy : 'Not assigned'}">
+                                Not assigned
+                            </td>
+
+                            <td th:text="${verification.verifiedDate != null ? #temporals.format(verification.verifiedDate, 'dd-MM-yyyy HH:mm') : 'Not verified'}">
+                                Not verified
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+        <!-- Navigation -->
+        <a th:href="@{/request-history}" class="back-button">
+            Back to Request History
+        </a>
+
+        <a th:href="@{/student-dashboard}" class="back-button">
+            Back to Dashboard
+        </a>
+
+    </div>
+
+</body>
+</html>

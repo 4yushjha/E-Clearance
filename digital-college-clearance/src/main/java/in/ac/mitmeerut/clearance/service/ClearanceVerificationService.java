@@ -161,6 +161,18 @@ public class ClearanceVerificationService {
                 .map(this::convertToDTO)
                 .toList();
     }
+    
+ // GET VERIFICATIONS BY DEPARTMENT
+    @Transactional(readOnly = true)
+    public List<ClearanceVerificationDTO> getVerificationsByDepartment(
+            Long departmentId) {
+
+        return clearanceVerificationRepository
+                .findByAuthority_Department_Id(departmentId)
+                .stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
 
     // APPROVE OR REJECT VERIFICATION
     public ClearanceVerificationDTO updateClearanceVerification(

@@ -88,4 +88,15 @@ public class StaffService {
 
         staffRepository.delete(existingStaff);
     }
+    
+ // Get Staff by User ID
+    public Staff getStaffByUserId(Long userId) {
+
+        return staffRepository.findByUser_Id(userId)
+                .orElseThrow(() ->
+                        new StaffNotFoundException(
+                                "Staff not found for user id: " + userId
+                        )
+                );
+    }
 }

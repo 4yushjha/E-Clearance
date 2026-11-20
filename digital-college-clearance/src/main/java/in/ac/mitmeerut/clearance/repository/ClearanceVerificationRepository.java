@@ -9,8 +9,9 @@ import in.ac.mitmeerut.clearance.entity.ClearanceVerification;
 public interface ClearanceVerificationRepository
         extends JpaRepository<ClearanceVerification, Long> {
 
-    // Find all verifications
-    // associated with a particular clearance request
     List<ClearanceVerification> findByClearanceRequest_Id(Long requestId);
 
+    // Find verifications belonging to a department
+    List<ClearanceVerification>
+    findByAuthority_Department_Id(Long departmentId);
 }

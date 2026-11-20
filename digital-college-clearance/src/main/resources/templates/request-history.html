@@ -1,0 +1,290 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Request History | E-Clearance</title>
+
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+
+    <style>
+        .history-container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .history-header {
+            margin-bottom: 30px;
+        }
+
+        .history-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
+        }
+
+        .student-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .info-item span {
+            display: block;
+            color: #777;
+            font-size: 14px;
+            margin-bottom: 7px;
+        }
+
+        .info-item strong {
+            color: #222;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+        }
+
+        .history-table th {
+            background: #f5f7fb;
+            color: #333;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .PENDING {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .UNDER_REVIEW {
+            background: #cfe2ff;
+            color: #084298;
+        }
+
+        .CLEARED {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .REJECTED {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+        }
+
+        .empty-state p {
+            color: #777;
+            margin: 15px 0 25px;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+
+        .back-button:hover {
+            background: #1d4ed8;
+        }
+
+        .view-button {
+            display: inline-block;
+            padding: 8px 14px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .view-button:hover {
+            background: #1d4ed8;
+        }
+
+        @media (max-width: 650px) {
+            .history-table {
+                min-width: 750px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="history-container">
+
+        <!-- Page Header -->
+        <div class="history-header">
+            <h1>Request History</h1>
+            <p>View all your previous college clearance applications.</p>
+        </div>
+
+        <!-- Student Information -->
+        <div class="history-card">
+
+            <h2>Student Information</h2>
+
+            <div class="student-info">
+
+                <div class="info-item">
+                    <span>Student Name</span>
+                    <strong th:text="${student.user.name}">
+                        Student Name
+                    </strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Roll Number</span>
+                    <strong th:text="${student.rollNumber}">
+                        Roll Number
+                    </strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Course</span>
+                    <strong th:text="${student.course}">
+                        Course
+                    </strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Branch</span>
+                    <strong th:text="${student.branch}">
+                        Branch
+                    </strong>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Request History -->
+        <div class="history-card">
+
+            <h2>All Clearance Applications</h2>
+
+            <!-- Display Applications -->
+            <div class="table-wrapper"
+                 th:if="${!#lists.isEmpty(requests)}">
+
+                <table class="history-table">
+
+                    <thead>
+                        <tr>
+                            <th>Application ID</th>
+                            <th>Application Date</th>
+                            <th>Overall Status</th>
+                            <th>Completion Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        <tr th:each="request : ${requests}">
+
+                            <!-- Application ID -->
+                            <td th:text="${request.id}">
+                                1
+                            </td>
+
+                            <!-- Application Date -->
+                            <td th:text="${#temporals.format(request.requestDate, 'dd-MM-yyyy HH:mm')}">
+                                Application Date
+                            </td>
+
+                            <!-- Overall Status -->
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${request.overallStatus}"
+                                      th:text="${request.overallStatus}">
+                                    PENDING
+                                </span>
+                            </td>
+
+                            <!-- Completion Date -->
+                            <td th:text="${request.completionDate != null ? #temporals.format(request.completionDate, 'dd-MM-yyyy HH:mm') : 'Not completed'}">
+                                Not completed
+                            </td>
+
+                            <!-- View Details Button -->
+                            <td>
+                                <a th:href="@{/request-details/{requestId}(requestId=${request.id})}"
+                                   class="view-button">
+                                    View Details
+                                </a>
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <!-- No Applications Found -->
+            <div class="empty-state"
+                 th:if="${#lists.isEmpty(requests)}">
+
+                <h3>No Request History Found</h3>
+
+                <p>
+                    You haven't submitted any clearance applications yet.
+                </p>
+
+                <a th:href="@{/apply-clearance}"
+                   class="back-button">
+                    Apply for Clearance
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- Back to Dashboard -->
+        <a th:href="@{/student-dashboard}"
+           class="back-button">
+            Back to Dashboard
+        </a>
+
+    </div>
+
+</body>
+</html>
