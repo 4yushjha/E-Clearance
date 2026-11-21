@@ -2,6 +2,7 @@ package in.ac.mitmeerut.clearance.controller;
 
 import java.util.List;
 
+import in.ac.mitmeerut.clearance.entity.ClearanceVerification;
 import in.ac.mitmeerut.clearance.dto.ClearanceVerificationDTO;
 import in.ac.mitmeerut.clearance.entity.Student;
 import in.ac.mitmeerut.clearance.entity.User;
@@ -132,7 +133,7 @@ public class PageController {
         }
     }
 
-    // Student Dashboard
+
     @GetMapping("/student-dashboard")
     public String studentDashboard(
             HttpSession session,
@@ -145,17 +146,47 @@ public class PageController {
             return "redirect:/login";
         }
 
+        // Fetch logged-in student
         Student student = studentService.getStudentByUserId(userId);
 
         model.addAttribute("student", student);
 
+        // Fetch student statistics
         model.addAttribute(
                 "statistics",
                 clearanceRequestService.getStudentRequestStatistics(student.getId())
         );
 
+        // Fetch student's clearance requests
+        List<ClearanceRequest> requests =
+                clearanceRequestService.getRequestsByStudentId(student.getId());
+
+        if (!requests.isEmpty()) {
+
+            // Get the latest clearance request
+            ClearanceRequest latestRequest = requests.get(0);
+
+            model.addAttribute("hasRequest", true);
+            model.addAttribute("latestRequest", latestRequest);
+
+            // Fetch department-wise verification records
+            List<ClearanceVerificationDTO> verifications =
+                    clearanceVerificationService.getVerificationsByRequestId(
+                            latestRequest.getId()
+                    );
+
+            model.addAttribute("verifications", verifications);
+
+        } else {
+
+            model.addAttribute("hasRequest", false);
+            model.addAttribute("verifications", List.of());
+
+        }
+
         return "student-dashboard";
     }
+   
 
     // Staff Dashboard
     @GetMapping("/staff-dashboard")
@@ -405,6 +436,78 @@ public class PageController {
         return "request-details";
     }
 
+ // STAFF APPROVE OR REJECT CLEARANCE
+    @PostMapping("/staff/verify/{id}")
+    public String verifyClearance(
+            @PathVariable Long id,
+            @RequestParam String status,
+            @RequestParam(required = false) String remarks,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+
+        // GET LOGGED-IN USER DETAILS
+        Long userId = (Long) session.getAttribute("loggedInUserId");
+        String role = (String) session.getAttribute("loggedInRole");
+
+        // CHECK STAFF LOGIN
+        if (userId == null || !"STAFF".equals(role)) {
+            return "redirect:/login";
+        }
+
+        try {
+
+            // GET STAFF FROM SESSION USER ID
+            Staff staff = staffService.getStaffByUserId(userId);
+
+            // ACCEPT ONLY CLEARED OR REJECTED
+            ClearanceStatus clearanceStatus =
+                    ClearanceStatus.valueOf(status);
+
+            if (clearanceStatus != ClearanceStatus.CLEARED
+                    && clearanceStatus != ClearanceStatus.REJECTED) {
+
+                throw new IllegalArgumentException(
+                        "Invalid verification status.");
+            }
+
+            // CREATE VERIFICATION UPDATE
+            ClearanceVerification verification =
+                    new ClearanceVerification();
+
+            verification.setStatus(clearanceStatus);
+            verification.setRemarks(remarks);
+
+            // USE LOGGED-IN STAFF
+            verification.setVerifiedBy(staff);
+
+            // UPDATE VERIFICATION
+            clearanceVerificationService.updateClearanceVerification(
+                    id,
+                    verification
+            );
+
+            redirectAttributes.addFlashAttribute(
+                    "successMessage",
+                    "Clearance verification updated successfully!"
+            );
+
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    exception.getMessage()
+            );
+
+        } catch (RuntimeException exception) {
+
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Unable to update clearance verification."
+            );
+        }
+
+        return "redirect:/staff-dashboard";
+    }
     // Logout
     @GetMapping("/logout")
     public String logout(HttpSession session) {

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 
@@ -441,6 +442,23 @@
             color: #d34452;
         }
 
+        .status-badge.under_review {
+            background: #e8e9ff;
+            color: #5145cd;
+        }
+
+        .no-request {
+            padding: 25px 0;
+            color: #858ba3;
+            font-size: 13px;
+        }
+
+        .no-request a {
+            color: #5145cd;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
         /* FOOTER */
 
         .footer {
@@ -825,7 +843,7 @@
             </div>
 
 
-            <!-- CLEARANCE INFORMATION -->
+            <!-- DYNAMIC CLEARANCE INFORMATION -->
 
             <div class="panel clearance-panel">
 
@@ -840,70 +858,60 @@
 
                 <div class="department-list">
 
-                    <div class="department-row">
+                    <!-- Show latest request's verifications -->
 
-                        <div class="department-info">
+                    <div th:if="${hasRequest}">
 
-                            <h6>Library</h6>
+                        <div class="department-row"
+                             th:each="verification : ${verifications}">
 
-                            <span>Library clearance</span>
+                            <div class="department-info">
+
+                                <h6 th:text="${verification.authorityName}">
+                                    Library
+                                </h6>
+
+                                <span
+                                    th:text="${verification.remarks != null and !#strings.isEmpty(verification.remarks)
+                                    ? verification.remarks
+                                    : verification.authorityName + ' clearance'}">
+                                    Department clearance
+                                </span>
+
+                            </div>
+
+                            <span class="status-badge"
+                                  th:classappend="${#strings.toLowerCase(verification.status.name())}"
+                                  th:text="${verification.status}">
+                                PENDING
+                            </span>
 
                         </div>
 
-                        <span class="status-badge pending">
-                            Pending
-                        </span>
+                        <!-- No verification records -->
+
+                        <div th:if="${#lists.isEmpty(verifications)}"
+                             class="no-request">
+
+                            No department verification records found.
+
+                        </div>
 
                     </div>
 
 
-                    <div class="department-row">
+                    <!-- Show when student has not applied -->
 
-                        <div class="department-info">
+                    <div th:unless="${hasRequest}"
+                         class="no-request">
 
-                            <h6>Hostel</h6>
+                        You haven't applied for clearance yet.
 
-                            <span>Hostel clearance</span>
+                        <br><br>
 
-                        </div>
-
-                        <span class="status-badge pending">
-                            Pending
-                        </span>
-
-                    </div>
-
-
-                    <div class="department-row">
-
-                        <div class="department-info">
-
-                            <h6>Accounts</h6>
-
-                            <span>Fee clearance</span>
-
-                        </div>
-
-                        <span class="status-badge pending">
-                            Pending
-                        </span>
-
-                    </div>
-
-
-                    <div class="department-row">
-
-                        <div class="department-info">
-
-                            <h6>Academic Department</h6>
-
-                            <span>Academic clearance</span>
-
-                        </div>
-
-                        <span class="status-badge pending">
-                            Pending
-                        </span>
+                        <a th:href="@{/apply-clearance}">
+                            Apply for Clearance →
+                        </a>
 
                     </div>
 

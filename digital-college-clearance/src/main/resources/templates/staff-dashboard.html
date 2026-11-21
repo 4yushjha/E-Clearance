@@ -417,6 +417,59 @@
                 font-size: 20px;
             }
         }
+        /* Staff Actions */
+
+.action-form {
+    min-width: 180px;
+}
+
+.remarks-input {
+    width: 100%;
+    padding: 9px;
+    border: 1px solid #e0e2ee;
+    border-radius: 7px;
+    font-size: 12px;
+    resize: vertical;
+    margin-bottom: 8px;
+    outline: none;
+}
+
+.remarks-input:focus {
+    border-color: #6864df;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 7px;
+}
+
+.action-btn {
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.approve-btn {
+    background: #dff7eb;
+    color: #168657;
+}
+
+.reject-btn {
+    background: #ffe5e7;
+    color: #d34452;
+}
+
+.action-btn:hover {
+    opacity: 0.8;
+}
+
+.completed-text {
+    color: #858ba3;
+    font-size: 12px;
+}
     </style>
 </head>
 
@@ -493,10 +546,16 @@
 
         </section>
 
-        <div class="message"
-             th:if="${errorMessage != null}"
-             th:text="${errorMessage}">
-        </div>
+       <div class="message"
+     th:if="${errorMessage != null}"
+     th:text="${errorMessage}">
+</div>
+
+<div th:if="${successMessage != null}"
+     style="background:#dff7eb; color:#168657;
+            padding:14px; border-radius:9px; margin-bottom:20px;"
+     th:text="${successMessage}">
+</div>
 
         <!-- Staff Information -->
 
@@ -605,16 +664,78 @@
 
                 <table>
 
-                    <thead>
-                        <tr>
-                            <th>Request ID</th>
-                            <th>Student Name</th>
-                            <th>Roll Number</th>
-                            <th>Authority</th>
-                            <th>Status</th>
-                            <th>Remarks</th>
-                        </tr>
-                    </thead>
+                   <tbody>
+
+    <tr th:each="verification : ${verifications}">
+
+        <td th:text="${verification.requestId}"></td>
+
+        <td th:text="${verification.studentName}"></td>
+
+        <td th:text="${verification.rollNumber}"></td>
+
+        <td th:text="${verification.authorityName}"></td>
+
+        <td>
+            <span class="status"
+                  th:classappend="${verification.status}"
+                  th:text="${verification.status}">
+            </span>
+        </td>
+
+        <td th:text="${verification.remarks != null
+            ? verification.remarks : 'No remarks'}">
+        </td>
+
+        <!-- STAFF ACTIONS -->
+
+        <td>
+
+            <!-- Show buttons only for unfinished tasks -->
+
+            <form th:if="${verification.status.name() == 'PENDING'
+                          or verification.status.name() == 'UNDER_REVIEW'}"
+                  th:action="@{/staff/verify/{id}(id=${verification.id})}"
+                  method="post"
+                  class="action-form">
+
+                <textarea
+                    name="remarks"
+                    class="remarks-input"
+                    placeholder="Enter remarks..."
+                    rows="2"></textarea>
+
+                <div class="action-buttons">
+
+                    <button type="submit"
+                            name="status"
+                            value="CLEARED"
+                            class="action-btn approve-btn">
+                        ✓ Approve
+                    </button>
+
+                    <button type="submit"
+                            name="status"
+                            value="REJECTED"
+                            class="action-btn reject-btn">
+                        ✕ Reject
+                    </button>
+
+                </div>
+
+            </form>
+
+            <span class="completed-text"
+                  th:if="${verification.status.name() == 'CLEARED'
+                          or verification.status.name() == 'REJECTED'}">
+                Decision Submitted
+            </span>
+
+        </td>
+
+    </tr>
+
+</tbody>
 
                     <tbody>
 

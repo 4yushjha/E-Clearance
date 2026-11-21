@@ -48,26 +48,18 @@ public class ClearanceVerificationService {
 
         return new ClearanceVerificationDTO(
                 verification.getId(),
-
                 verification.getClearanceRequest().getId(),
-
                 verification.getAuthority().getName(),
-
                 verification.getClearanceRequest()
                         .getStudent().getUser().getName(),
-
                 verification.getClearanceRequest()
                         .getStudent().getRollNumber(),
-
                 verification.getStatus(),
-
                 verification.getRemarks(),
-
                 verification.getVerifiedBy() != null
                         ? verification.getVerifiedBy()
                                 .getUser().getName()
                         : null,
-
                 verification.getVerifiedDate()
         );
     }
@@ -109,7 +101,6 @@ public class ClearanceVerificationService {
 
         verification.setClearanceRequest(request);
         verification.setAuthority(authority);
-
         verification.setStatus(ClearanceStatus.PENDING);
         verification.setVerifiedDate(null);
         verification.setVerifiedBy(null);
@@ -161,8 +152,8 @@ public class ClearanceVerificationService {
                 .map(this::convertToDTO)
                 .toList();
     }
-    
- // GET VERIFICATIONS BY DEPARTMENT
+
+    // GET VERIFICATIONS BY DEPARTMENT
     @Transactional(readOnly = true)
     public List<ClearanceVerificationDTO> getVerificationsByDepartment(
             Long departmentId) {
@@ -205,6 +196,7 @@ public class ClearanceVerificationService {
                     "Staff ID is required");
         }
 
+        // FIND STAFF
         Long staffId = verification.getVerifiedBy().getId();
 
         Staff staff = staffRepository.findById(staffId)
@@ -212,6 +204,33 @@ public class ClearanceVerificationService {
                         new StaffNotFoundException(
                                 "Staff not found with ID: " + staffId));
 
+        // CHECK STAFF DEPARTMENT
+        if (staff.getDepartment() == null) {
+
+            throw new IllegalStateException(
+                    "Staff member is not assigned to a department");
+        }
+
+        // CHECK AUTHORITY DEPARTMENT
+        if (existing.getAuthority().getDepartment() == null) {
+
+            throw new IllegalStateException(
+                    "Clearance authority is not assigned to a department");
+        }
+
+        Long staffDepartmentId = staff.getDepartment().getId();
+
+        Long authorityDepartmentId =
+                existing.getAuthority().getDepartment().getId();
+
+        // PREVENT CROSS-DEPARTMENT APPROVAL
+        if (!staffDepartmentId.equals(authorityDepartmentId)) {
+
+            throw new IllegalStateException(
+                    "You are not authorized to verify this department's clearance");
+        }
+
+        // UPDATE VERIFICATION
         existing.setStatus(verification.getStatus());
         existing.setRemarks(verification.getRemarks());
         existing.setVerifiedBy(staff);
@@ -220,6 +239,7 @@ public class ClearanceVerificationService {
         ClearanceVerification saved =
                 clearanceVerificationRepository.save(existing);
 
+        // UPDATE OVERALL REQUEST STATUS
         updateOverallRequestStatus(
                 existing.getClearanceRequest().getId());
 
