@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Staff Dashboard | E-Clearance</title>
 
     <style>
@@ -26,7 +25,6 @@
         }
 
         /* Sidebar */
-
         .sidebar {
             width: 250px;
             background: #171b35;
@@ -88,7 +86,6 @@
         }
 
         /* Main Content */
-
         .main {
             margin-left: 250px;
             width: calc(100% - 250px);
@@ -96,7 +93,6 @@
         }
 
         /* Header */
-
         .topbar {
             display: flex;
             justify-content: space-between;
@@ -150,7 +146,6 @@
         }
 
         /* Welcome Section */
-
         .welcome {
             background: linear-gradient(120deg, #343c8e, #6864df);
             color: white;
@@ -171,7 +166,6 @@
         }
 
         /* Staff Details */
-
         .section-title {
             font-size: 18px;
             font-weight: 700;
@@ -205,7 +199,6 @@
         }
 
         /* Statistics */
-
         .stats {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -246,7 +239,6 @@
         }
 
         /* Requests Table */
-
         .table-container {
             background: white;
             border-radius: 14px;
@@ -343,8 +335,60 @@
             margin-bottom: 20px;
         }
 
-        /* Responsive */
+        /* Staff Actions */
+        .action-form {
+            min-width: 180px;
+        }
 
+        .remarks-input {
+            width: 100%;
+            padding: 9px;
+            border: 1px solid #e0e2ee;
+            border-radius: 7px;
+            font-size: 12px;
+            resize: vertical;
+            margin-bottom: 8px;
+            outline: none;
+        }
+
+        .remarks-input:focus {
+            border-color: #6864df;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 7px;
+        }
+
+        .action-btn {
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .approve-btn {
+            background: #dff7eb;
+            color: #168657;
+        }
+
+        .reject-btn {
+            background: #ffe5e7;
+            color: #d34452;
+        }
+
+        .action-btn:hover {
+            opacity: 0.8;
+        }
+
+        .completed-text {
+            color: #858ba3;
+            font-size: 12px;
+        }
+
+        /* Responsive */
         @media(max-width: 1000px) {
             .stats {
                 grid-template-columns: repeat(2, 1fr);
@@ -417,59 +461,6 @@
                 font-size: 20px;
             }
         }
-        /* Staff Actions */
-
-.action-form {
-    min-width: 180px;
-}
-
-.remarks-input {
-    width: 100%;
-    padding: 9px;
-    border: 1px solid #e0e2ee;
-    border-radius: 7px;
-    font-size: 12px;
-    resize: vertical;
-    margin-bottom: 8px;
-    outline: none;
-}
-
-.remarks-input:focus {
-    border-color: #6864df;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 7px;
-}
-
-.action-btn {
-    border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.approve-btn {
-    background: #dff7eb;
-    color: #168657;
-}
-
-.reject-btn {
-    background: #ffe5e7;
-    color: #d34452;
-}
-
-.action-btn:hover {
-    opacity: 0.8;
-}
-
-.completed-text {
-    color: #858ba3;
-    font-size: 12px;
-}
     </style>
 </head>
 
@@ -478,7 +469,6 @@
 <div class="layout">
 
     <!-- Sidebar -->
-
     <aside class="sidebar">
 
         <div class="logo">E-<span>Clearance</span></div>
@@ -498,11 +488,9 @@
     </aside>
 
     <!-- Main Content -->
-
     <main class="main" id="dashboard">
 
         <!-- Topbar -->
-
         <div class="topbar">
 
             <div>
@@ -531,7 +519,6 @@
         </div>
 
         <!-- Welcome -->
-
         <section class="welcome">
 
             <h2>
@@ -546,19 +533,20 @@
 
         </section>
 
-       <div class="message"
-     th:if="${errorMessage != null}"
-     th:text="${errorMessage}">
-</div>
+        <!-- Error Message -->
+        <div class="message"
+             th:if="${errorMessage != null}"
+             th:text="${errorMessage}">
+        </div>
 
-<div th:if="${successMessage != null}"
-     style="background:#dff7eb; color:#168657;
-            padding:14px; border-radius:9px; margin-bottom:20px;"
-     th:text="${successMessage}">
-</div>
+        <!-- Success Message -->
+        <div th:if="${successMessage != null}"
+             style="background:#dff7eb; color:#168657;
+                    padding:14px; border-radius:9px; margin-bottom:20px;"
+             th:text="${successMessage}">
+        </div>
 
         <!-- Staff Information -->
-
         <section id="department">
 
             <h3 class="section-title">Staff Information</h3>
@@ -589,8 +577,10 @@
 
                     <div class="info-item">
                         <small>Department</small>
+
                         <strong th:if="${staff.department != null}"
-                                th:text="${staff.department.name}"></strong>
+                                th:text="${staff.department.name}">
+                        </strong>
 
                         <strong th:if="${staff.department == null}">
                             Not Assigned
@@ -609,7 +599,6 @@
         </section>
 
         <!-- Statistics -->
-
         <h3 class="section-title">Clearance Overview</h3>
 
         <section class="stats">
@@ -637,7 +626,6 @@
         </section>
 
         <!-- Requests -->
-
         <section class="table-container" id="requests">
 
             <div class="table-heading">
@@ -655,7 +643,10 @@
 
                 <h3>No Requests Found</h3>
 
-                <p>There are currently no clearance requests assigned to your department.</p>
+                <p>
+                    There are currently no clearance requests assigned
+                    to your department.
+                </p>
 
             </div>
 
@@ -664,79 +655,7 @@
 
                 <table>
 
-                   <tbody>
-
-    <tr th:each="verification : ${verifications}">
-
-        <td th:text="${verification.requestId}"></td>
-
-        <td th:text="${verification.studentName}"></td>
-
-        <td th:text="${verification.rollNumber}"></td>
-
-        <td th:text="${verification.authorityName}"></td>
-
-        <td>
-            <span class="status"
-                  th:classappend="${verification.status}"
-                  th:text="${verification.status}">
-            </span>
-        </td>
-
-        <td th:text="${verification.remarks != null
-            ? verification.remarks : 'No remarks'}">
-        </td>
-
-        <!-- STAFF ACTIONS -->
-
-        <td>
-
-            <!-- Show buttons only for unfinished tasks -->
-
-            <form th:if="${verification.status.name() == 'PENDING'
-                          or verification.status.name() == 'UNDER_REVIEW'}"
-                  th:action="@{/staff/verify/{id}(id=${verification.id})}"
-                  method="post"
-                  class="action-form">
-
-                <textarea
-                    name="remarks"
-                    class="remarks-input"
-                    placeholder="Enter remarks..."
-                    rows="2"></textarea>
-
-                <div class="action-buttons">
-
-                    <button type="submit"
-                            name="status"
-                            value="CLEARED"
-                            class="action-btn approve-btn">
-                        ✓ Approve
-                    </button>
-
-                    <button type="submit"
-                            name="status"
-                            value="REJECTED"
-                            class="action-btn reject-btn">
-                        ✕ Reject
-                    </button>
-
-                </div>
-
-            </form>
-
-            <span class="completed-text"
-                  th:if="${verification.status.name() == 'CLEARED'
-                          or verification.status.name() == 'REJECTED'}">
-                Decision Submitted
-            </span>
-
-        </td>
-
-    </tr>
-
-</tbody>
-
+                    <!-- Only ONE verification loop -->
                     <tbody>
 
                         <tr th:each="verification : ${verifications}">
@@ -758,6 +677,50 @@
 
                             <td th:text="${verification.remarks != null
                                 ? verification.remarks : 'No remarks'}">
+                            </td>
+
+                            <!-- Staff Actions -->
+                            <td>
+
+                                <!-- Show buttons only for unfinished tasks -->
+                                <form th:if="${verification.status.name() == 'PENDING'
+                                              or verification.status.name() == 'UNDER_REVIEW'}"
+                                      th:action="@{/staff/verify/{id}(id=${verification.id})}"
+                                      method="post"
+                                      class="action-form">
+
+                                    <textarea
+                                        name="remarks"
+                                        class="remarks-input"
+                                        placeholder="Enter remarks..."
+                                        rows="2"></textarea>
+
+                                    <div class="action-buttons">
+
+                                        <button type="submit"
+                                                name="status"
+                                                value="CLEARED"
+                                                class="action-btn approve-btn">
+                                            ✓ Approve
+                                        </button>
+
+                                        <button type="submit"
+                                                name="status"
+                                                value="REJECTED"
+                                                class="action-btn reject-btn">
+                                            ✕ Reject
+                                        </button>
+
+                                    </div>
+
+                                </form>
+
+                                <span class="completed-text"
+                                      th:if="${verification.status.name() == 'CLEARED'
+                                              or verification.status.name() == 'REJECTED'}">
+                                    Decision Submitted
+                                </span>
+
                             </td>
 
                         </tr>

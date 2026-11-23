@@ -176,7 +176,7 @@
             font-size: 12px;
         }
 
-        /* ALERT */
+        /* ALERTS */
 
         .alert {
             padding: 14px 18px;
@@ -189,6 +189,12 @@
             background: #dff7eb;
             color: #168657;
             border: 1px solid #b8ebd2;
+        }
+
+        .alert-error {
+            background: #ffe5e7;
+            color: #d34452;
+            border: 1px solid #ffc8cd;
         }
 
         /* WELCOME SECTION */
@@ -240,6 +246,34 @@
         .primary-button:hover {
             background: #e9e9ff;
             transform: translateY(-2px);
+        }
+
+        /* CERTIFICATE DOWNLOAD BUTTON */
+
+        .certificate-button {
+            display: inline-block;
+            background: #16a34a;
+            color: white;
+            text-decoration: none;
+            padding: 12px 19px;
+            border-radius: 8px;
+            margin-top: 20px;
+            margin-left: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            transition: 0.3s;
+        }
+
+        .certificate-button:hover {
+            background: #15803d;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .certificate-message {
+            color: #dff7eb;
+            font-size: 12px;
+            margin-top: 10px;
         }
 
         .welcome-decoration {
@@ -405,7 +439,11 @@
             align-items: center;
             padding: 17px 0;
             border-bottom: 1px solid #eff0f6;
-            gap: 10px;
+            gap: 12px;
+        }
+
+        .department-info {
+            flex: 1;
         }
 
         .department-info h6 {
@@ -445,6 +483,41 @@
         .status-badge.under_review {
             background: #e8e9ff;
             color: #5145cd;
+        }
+
+        .status-badge.not-sent {
+            background: #edf0f5;
+            color: #687087;
+        }
+
+        .department-action {
+            margin-top: 9px;
+        }
+
+        .send-button {
+            display: inline-block;
+            background: #5145cd;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .send-button:hover {
+            background: #3932a5;
+        }
+
+        .resend-button {
+            background: #d34452;
+        }
+
+        .resend-button:hover {
+            background: #ad2938;
         }
 
         .no-request {
@@ -550,6 +623,10 @@
             .footer {
                 flex-direction: column;
             }
+
+            .certificate-button {
+                margin-left: 0;
+            }
         }
     </style>
 
@@ -640,9 +717,17 @@
 
         <!-- SUCCESS MESSAGE -->
 
-        <div th:if="${success}"
+        <div th:if="${successMessage}"
              class="alert alert-success"
-             th:text="${success}">
+             th:text="${successMessage}">
+        </div>
+
+
+        <!-- ERROR MESSAGE -->
+
+        <div th:if="${errorMessage}"
+             class="alert alert-error"
+             th:text="${errorMessage}">
         </div>
 
 
@@ -664,9 +749,25 @@
                     your requirements before graduation.
                 </p>
 
+                <!-- APPLY BUTTON -->
+
                 <a th:href="@{/apply-clearance}" class="primary-button">
                     + Apply for Clearance
                 </a>
+
+                <!-- DOWNLOAD CERTIFICATE BUTTON -->
+                <!-- Visible only after all required departments are cleared -->
+
+                <a th:if="${certificateEligible}"
+                   th:href="@{/student/download-certificate/{requestId}(requestId=${latestRequest.id})}"
+                   class="certificate-button">
+                    ⬇ Download Clearance Certificate
+                </a>
+
+                <div th:if="${certificateEligible}"
+                     class="certificate-message">
+                    Congratulations! Your college clearance is complete.
+                </div>
 
             </div>
 
@@ -843,7 +944,7 @@
             </div>
 
 
-            <!-- DYNAMIC CLEARANCE INFORMATION -->
+            <!-- INDIVIDUAL DEPARTMENT CLEARANCE -->
 
             <div class="panel clearance-panel">
 
@@ -851,56 +952,128 @@
 
                     <h5>Clearance Information</h5>
 
-                    <p>Department-wise clearance</p>
+                    <p>Send your clearance request to each department individually.</p>
 
                 </div>
 
 
                 <div class="department-list">
 
-                    <!-- Show latest request's verifications -->
+                    <!-- STUDENT HAS AN APPLICATION -->
 
                     <div th:if="${hasRequest}">
 
+                        <!-- LOOP THROUGH ALL AUTHORITIES -->
+
                         <div class="department-row"
-                             th:each="verification : ${verifications}">
+                             th:each="authority : ${authorities}"
+                             th:with="matching=${verifications.?[authorityName == #vars.authority.name]}">
 
                             <div class="department-info">
 
-                                <h6 th:text="${verification.authorityName}">
+                                <h6 th:text="${authority.name}">
                                     Library
                                 </h6>
 
-                                <span
-                                    th:text="${verification.remarks != null and !#strings.isEmpty(verification.remarks)
-                                    ? verification.remarks
-                                    : verification.authorityName + ' clearance'}">
-                                    Department clearance
+
+                                <!-- AUTHORITY HAS NOT RECEIVED A REQUEST -->
+
+                                <div th:if="${matching.isEmpty()}">
+
+                                    <span>Request not submitted yet</span>
+
+                                    <div class="department-action">
+
+                                        <form th:action="@{/student/send-clearance/{requestId}/{authorityId}
+                                            (requestId=${latestRequest.id},authorityId=${authority.id})}"
+                                              method="post">
+
+                                            <button type="submit"
+                                                    class="send-button">
+                                                Send Request
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- AUTHORITY HAS RECEIVED A REQUEST -->
+
+                                <div th:if="${!matching.isEmpty()}">
+
+                                    <span th:if="${matching[0].remarks != null}"
+                                          th:text="${matching[0].remarks}">
+                                        Department remarks
+                                    </span>
+
+                                    <span th:unless="${matching[0].remarks != null}">
+                                        Department clearance
+                                    </span>
+
+
+                                    <!-- RESEND ONLY WHEN REJECTED -->
+
+                                    <div class="department-action"
+                                         th:if="${matching[0].status.name() == 'REJECTED'}">
+
+                                        <form th:action="@{/student/send-clearance/{requestId}/{authorityId}
+                                            (requestId=${latestRequest.id},authorityId=${authority.id})}"
+                                              method="post">
+
+                                            <button type="submit"
+                                                    class="send-button resend-button">
+                                                Resend Request
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- STATUS BADGE -->
+
+                            <div th:if="${matching.isEmpty()}">
+
+                                <span class="status-badge not-sent">
+                                    NOT SENT
                                 </span>
 
                             </div>
 
-                            <span class="status-badge"
-                                  th:classappend="${#strings.toLowerCase(verification.status.name())}"
-                                  th:text="${verification.status}">
-                                PENDING
-                            </span>
+
+                            <div th:if="${!matching.isEmpty()}">
+
+                                <span class="status-badge"
+                                      th:classappend="${#strings.toLowerCase(matching[0].status.name())}"
+                                      th:text="${matching[0].status}">
+                                    PENDING
+                                </span>
+
+                            </div>
 
                         </div>
 
-                        <!-- No verification records -->
 
-                        <div th:if="${#lists.isEmpty(verifications)}"
+                        <!-- NO AUTHORITIES -->
+
+                        <div th:if="${#lists.isEmpty(authorities)}"
                              class="no-request">
 
-                            No department verification records found.
+                            No clearance departments are registered.
 
                         </div>
 
                     </div>
 
 
-                    <!-- Show when student has not applied -->
+                    <!-- STUDENT HAS NOT APPLIED -->
 
                     <div th:unless="${hasRequest}"
                          class="no-request">

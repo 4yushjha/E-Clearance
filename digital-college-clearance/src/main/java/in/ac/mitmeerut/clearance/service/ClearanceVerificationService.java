@@ -2,6 +2,7 @@ package in.ac.mitmeerut.clearance.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,6 +11,7 @@ import in.ac.mitmeerut.clearance.dto.ClearanceVerificationDTO;
 import in.ac.mitmeerut.clearance.entity.ClearanceAuthority;
 import in.ac.mitmeerut.clearance.entity.ClearanceRequest;
 import in.ac.mitmeerut.clearance.entity.ClearanceVerification;
+import in.ac.mitmeerut.clearance.entity.ClearanceVerificationHistory;
 import in.ac.mitmeerut.clearance.entity.Staff;
 import in.ac.mitmeerut.clearance.enums.ClearanceStatus;
 import in.ac.mitmeerut.clearance.exception.ClearanceAuthorityNotFoundException;
@@ -18,6 +20,7 @@ import in.ac.mitmeerut.clearance.exception.ClearanceVerificationNotFoundExceptio
 import in.ac.mitmeerut.clearance.exception.StaffNotFoundException;
 import in.ac.mitmeerut.clearance.repository.ClearanceAuthorityRepository;
 import in.ac.mitmeerut.clearance.repository.ClearanceRequestRepository;
+import in.ac.mitmeerut.clearance.repository.ClearanceVerificationHistoryRepository;
 import in.ac.mitmeerut.clearance.repository.ClearanceVerificationRepository;
 import in.ac.mitmeerut.clearance.repository.StaffRepository;
 
@@ -28,17 +31,20 @@ public class ClearanceVerificationService {
     private final ClearanceVerificationRepository clearanceVerificationRepository;
     private final ClearanceRequestRepository clearanceRequestRepository;
     private final ClearanceAuthorityRepository clearanceAuthorityRepository;
+    private final ClearanceVerificationHistoryRepository historyRepository;
     private final StaffRepository staffRepository;
 
     public ClearanceVerificationService(
             ClearanceVerificationRepository clearanceVerificationRepository,
             ClearanceRequestRepository clearanceRequestRepository,
             ClearanceAuthorityRepository clearanceAuthorityRepository,
+            ClearanceVerificationHistoryRepository historyRepository,
             StaffRepository staffRepository) {
 
         this.clearanceVerificationRepository = clearanceVerificationRepository;
         this.clearanceRequestRepository = clearanceRequestRepository;
         this.clearanceAuthorityRepository = clearanceAuthorityRepository;
+        this.historyRepository = historyRepository;
         this.staffRepository = staffRepository;
     }
 
@@ -64,20 +70,150 @@ public class ClearanceVerificationService {
         );
     }
 
-    // CREATE VERIFICATION
+    // SAVE VERIFICATION HISTORY
+    private void saveHistory(
+            ClearanceVerification verification,
+            ClearanceStatus status,
+            String remarks,
+            Staff staff,
+            Integer attemptNumber) {
+
+        ClearanceVerificationHistory history =
+                new ClearanceVerificationHistory();
+
+        history.setVerification(verification);
+        history.setStatus(status);
+        history.setRemarks(remarks);
+        history.setStaff(staff);
+        history.setActionDate(LocalDateTime.now());
+        history.setAttemptNumber(attemptNumber);
+
+        historyRepository.save(history);
+    }
+
+    // GET NEXT ATTEMPT NUMBER
+    private Integer getNextAttemptNumber(Long verificationId) {
+
+        List<ClearanceVerificationHistory> histories =
+                historyRepository
+                        .findByVerification_IdOrderByAttemptNumberAsc(
+                                verificationId);
+
+        System.out.println("========== HISTORY DEBUG ==========");
+        System.out.println("Verification ID: " + verificationId);
+        System.out.println("History records: " + histories.size());
+
+        for (ClearanceVerificationHistory history : histories) {
+            System.out.println(
+                    "History ID: " + history.getId()
+                    + " | Status: " + history.getStatus()
+                    + " | Attempt: " + history.getAttemptNumber()
+            );
+        }
+
+        Integer nextAttempt = histories.stream()
+                .mapToInt(ClearanceVerificationHistory::getAttemptNumber)
+                .max()
+                .orElse(0) + 1;
+
+        System.out.println("Next attempt number: " + nextAttempt);
+        System.out.println("===================================");
+
+        return nextAttempt;
+    }
+
+    // STUDENT SENDS REQUEST TO INDIVIDUAL DEPARTMENT
+    public ClearanceVerificationDTO sendDepartmentRequest(
+            Long requestId,
+            Long authorityId,
+            Long studentId) {
+
+        ClearanceRequest request = clearanceRequestRepository
+                .findById(requestId)
+                .orElseThrow(() ->
+                        new ClearanceRequestNotFoundException(
+                                "Clearance request not found: " + requestId));
+
+        if (!request.getStudent().getId().equals(studentId)) {
+            throw new IllegalStateException(
+                    "You are not authorized to access this application.");
+        }
+
+        ClearanceAuthority authority = clearanceAuthorityRepository
+                .findById(authorityId)
+                .orElseThrow(() ->
+                        new ClearanceAuthorityNotFoundException(
+                                "Clearance authority not found: " + authorityId));
+
+        Optional<ClearanceVerification> existingOptional =
+                clearanceVerificationRepository
+                        .findByClearanceRequest_IdAndAuthority_Id(
+                                requestId, authorityId);
+
+        ClearanceVerification verification;
+        Integer attemptNumber;
+
+        if (existingOptional.isEmpty()) {
+
+            verification = new ClearanceVerification();
+
+            verification.setClearanceRequest(request);
+            verification.setAuthority(authority);
+            verification.setStatus(ClearanceStatus.PENDING);
+            verification.setVerifiedBy(null);
+            verification.setVerifiedDate(null);
+            verification.setRemarks(null);
+
+            verification =
+                    clearanceVerificationRepository.save(verification);
+
+            attemptNumber = 1;
+
+        } else {
+
+            verification = existingOptional.get();
+
+            if (verification.getStatus() != ClearanceStatus.REJECTED) {
+                throw new IllegalStateException(
+                        "You can only resend a rejected department request.");
+            }
+
+            attemptNumber = getNextAttemptNumber(verification.getId());
+
+            verification.setStatus(ClearanceStatus.PENDING);
+            verification.setRemarks(null);
+            verification.setVerifiedBy(null);
+            verification.setVerifiedDate(null);
+
+            verification =
+                    clearanceVerificationRepository.save(verification);
+        }
+
+        saveHistory(
+                verification,
+                ClearanceStatus.PENDING,
+                "Request submitted by student",
+                null,
+                attemptNumber
+        );
+
+        updateOverallRequestStatus(requestId);
+
+        return convertToDTO(verification);
+    }
+
+    // CREATE VERIFICATION THROUGH REST API
     public ClearanceVerificationDTO saveClearanceVerification(
             ClearanceVerification verification) {
 
         if (verification.getClearanceRequest() == null
                 || verification.getClearanceRequest().getId() == null) {
-
             throw new IllegalArgumentException(
                     "Clearance request ID is required");
         }
 
         if (verification.getAuthority() == null
                 || verification.getAuthority().getId() == null) {
-
             throw new IllegalArgumentException(
                     "Clearance authority ID is required");
         }
@@ -89,15 +225,20 @@ public class ClearanceVerificationService {
                 .findById(requestId)
                 .orElseThrow(() ->
                         new ClearanceRequestNotFoundException(
-                                "Clearance request not found with ID: "
-                                        + requestId));
+                                "Clearance request not found: " + requestId));
 
         ClearanceAuthority authority = clearanceAuthorityRepository
                 .findById(authorityId)
                 .orElseThrow(() ->
                         new ClearanceAuthorityNotFoundException(
-                                "Clearance authority not found with ID: "
-                                        + authorityId));
+                                "Clearance authority not found: " + authorityId));
+
+        if (clearanceVerificationRepository
+                .existsByClearanceRequest_IdAndAuthority_Id(
+                        requestId, authorityId)) {
+            throw new IllegalStateException(
+                    "Verification already exists for this department.");
+        }
 
         verification.setClearanceRequest(request);
         verification.setAuthority(authority);
@@ -107,6 +248,16 @@ public class ClearanceVerificationService {
 
         ClearanceVerification saved =
                 clearanceVerificationRepository.save(verification);
+
+        saveHistory(
+                saved,
+                ClearanceStatus.PENDING,
+                "Request submitted",
+                null,
+                1
+        );
+
+        updateOverallRequestStatus(requestId);
 
         return convertToDTO(saved);
     }
@@ -129,21 +280,19 @@ public class ClearanceVerificationService {
                 clearanceVerificationRepository.findById(id)
                         .orElseThrow(() ->
                                 new ClearanceVerificationNotFoundException(
-                                        "Clearance verification not found with ID: "
-                                                + id));
+                                        "Clearance verification not found: " + id));
 
         return convertToDTO(verification);
     }
 
-    // GET VERIFICATIONS BY CLEARANCE REQUEST ID
+    // GET VERIFICATIONS BY CLEARANCE REQUEST
     @Transactional(readOnly = true)
     public List<ClearanceVerificationDTO> getVerificationsByRequestId(
             Long requestId) {
 
         if (!clearanceRequestRepository.existsById(requestId)) {
-
             throw new ClearanceRequestNotFoundException(
-                    "Clearance request not found with ID: " + requestId);
+                    "Clearance request not found: " + requestId);
         }
 
         return clearanceVerificationRepository
@@ -174,63 +323,47 @@ public class ClearanceVerificationService {
                 clearanceVerificationRepository.findById(id)
                         .orElseThrow(() ->
                                 new ClearanceVerificationNotFoundException(
-                                        "Clearance verification not found with ID: "
-                                                + id));
+                                        "Clearance verification not found: " + id));
 
-        if (verification.getStatus() == null) {
-
+        if (verification.getStatus() == null
+                || verification.getStatus() == ClearanceStatus.PENDING) {
             throw new IllegalArgumentException(
-                    "Verification status is required");
+                    "A valid verification status is required.");
         }
 
-        if (verification.getStatus() == ClearanceStatus.PENDING) {
-
-            throw new IllegalArgumentException(
-                    "Verification cannot be updated to PENDING");
+        if (existing.getStatus() != ClearanceStatus.PENDING
+                && existing.getStatus() != ClearanceStatus.UNDER_REVIEW) {
+            throw new IllegalStateException(
+                    "This department request has already been processed.");
         }
 
         if (verification.getVerifiedBy() == null
                 || verification.getVerifiedBy().getId() == null) {
-
-            throw new IllegalArgumentException(
-                    "Staff ID is required");
+            throw new IllegalArgumentException("Staff ID is required.");
         }
 
-        // FIND STAFF
         Long staffId = verification.getVerifiedBy().getId();
 
         Staff staff = staffRepository.findById(staffId)
                 .orElseThrow(() ->
                         new StaffNotFoundException(
-                                "Staff not found with ID: " + staffId));
+                                "Staff not found: " + staffId));
 
-        // CHECK STAFF DEPARTMENT
-        if (staff.getDepartment() == null) {
-
+        if (staff.getDepartment() == null
+                || existing.getAuthority().getDepartment() == null) {
             throw new IllegalStateException(
-                    "Staff member is not assigned to a department");
-        }
-
-        // CHECK AUTHORITY DEPARTMENT
-        if (existing.getAuthority().getDepartment() == null) {
-
-            throw new IllegalStateException(
-                    "Clearance authority is not assigned to a department");
+                    "Staff member or authority is not assigned to a department.");
         }
 
         Long staffDepartmentId = staff.getDepartment().getId();
-
         Long authorityDepartmentId =
                 existing.getAuthority().getDepartment().getId();
 
-        // PREVENT CROSS-DEPARTMENT APPROVAL
         if (!staffDepartmentId.equals(authorityDepartmentId)) {
-
             throw new IllegalStateException(
-                    "You are not authorized to verify this department's clearance");
+                    "You are not authorized to verify this department's clearance.");
         }
 
-        // UPDATE VERIFICATION
         existing.setStatus(verification.getStatus());
         existing.setRemarks(verification.getRemarks());
         existing.setVerifiedBy(staff);
@@ -239,42 +372,63 @@ public class ClearanceVerificationService {
         ClearanceVerification saved =
                 clearanceVerificationRepository.save(existing);
 
-        // UPDATE OVERALL REQUEST STATUS
+        Integer attemptNumber = getCurrentAttemptNumber(saved.getId());
+
+        saveHistory(
+                saved,
+                saved.getStatus(),
+                saved.getRemarks(),
+                staff,
+                attemptNumber
+        );
+
         updateOverallRequestStatus(
                 existing.getClearanceRequest().getId());
 
         return convertToDTO(saved);
     }
 
-    // UPDATE OVERALL CLEARANCE REQUEST STATUS
+    // GET CURRENT ATTEMPT NUMBER
+    private Integer getCurrentAttemptNumber(Long verificationId) {
+
+        Optional<ClearanceVerificationHistory> latest =
+                historyRepository
+                        .findTopByVerification_IdOrderByAttemptNumberDesc(
+                                verificationId);
+
+        return latest.map(
+                ClearanceVerificationHistory::getAttemptNumber
+        ).orElse(1);
+    }
+
+    // UPDATE OVERALL APPLICATION STATUS
     private void updateOverallRequestStatus(Long requestId) {
 
         ClearanceRequest request = clearanceRequestRepository
                 .findById(requestId)
                 .orElseThrow(() ->
                         new ClearanceRequestNotFoundException(
-                                "Clearance request not found with ID: "
-                                        + requestId));
+                                "Clearance request not found: " + requestId));
 
         List<ClearanceVerification> verifications =
                 clearanceVerificationRepository
                         .findByClearanceRequest_Id(requestId);
 
-        if (verifications.isEmpty()) {
-            return;
-        }
+        long totalAuthorities = clearanceAuthorityRepository.count();
 
         boolean rejected = verifications.stream()
-                .anyMatch(v ->
-                        v.getStatus() == ClearanceStatus.REJECTED);
-
-        boolean allCleared = verifications.stream()
-                .allMatch(v ->
-                        v.getStatus() == ClearanceStatus.CLEARED);
+                .anyMatch(v -> v.getStatus() == ClearanceStatus.REJECTED);
 
         boolean underReview = verifications.stream()
-                .anyMatch(v ->
-                        v.getStatus() == ClearanceStatus.UNDER_REVIEW);
+                .anyMatch(v -> v.getStatus() == ClearanceStatus.UNDER_REVIEW);
+
+        boolean allAuthoritiesSubmitted =
+                totalAuthorities > 0
+                && verifications.size() == totalAuthorities;
+
+        boolean allCleared = allAuthoritiesSubmitted
+                && verifications.stream()
+                        .allMatch(v -> v.getStatus() == ClearanceStatus.CLEARED);
 
         if (rejected) {
 
@@ -307,11 +461,15 @@ public class ClearanceVerificationService {
                 clearanceVerificationRepository.findById(id)
                         .orElseThrow(() ->
                                 new ClearanceVerificationNotFoundException(
-                                        "Clearance verification not found with ID: "
-                                                + id));
+                                        "Clearance verification not found: " + id));
 
         Long requestId = verification.getClearanceRequest().getId();
 
+        List<ClearanceVerificationHistory> histories =
+                historyRepository
+                        .findByVerification_IdOrderByAttemptNumberAsc(id);
+
+        historyRepository.deleteAll(histories);
         clearanceVerificationRepository.delete(verification);
 
         updateOverallRequestStatus(requestId);

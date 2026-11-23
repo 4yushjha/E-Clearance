@@ -1,5 +1,6 @@
 package in.ac.mitmeerut.clearance.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -7,38 +8,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import in.ac.mitmeerut.clearance.entity.ClearanceRequest;
-import in.ac.mitmeerut.clearance.entity.ClearanceVerification;
-import in.ac.mitmeerut.clearance.entity.ClearanceAuthority;
 import in.ac.mitmeerut.clearance.entity.Student;
-
 import in.ac.mitmeerut.clearance.enums.ClearanceStatus;
-
 import in.ac.mitmeerut.clearance.exception.ClearanceRequestNotFoundException;
 import in.ac.mitmeerut.clearance.exception.StudentNotFoundException;
-
 import in.ac.mitmeerut.clearance.repository.ClearanceRequestRepository;
 import in.ac.mitmeerut.clearance.repository.StudentRepository;
-import in.ac.mitmeerut.clearance.repository.ClearanceAuthorityRepository;
-import in.ac.mitmeerut.clearance.repository.ClearanceVerificationRepository;
 
 @Service
 public class ClearanceRequestService {
 
     private final ClearanceRequestRepository clearanceRequestRepository;
     private final StudentRepository studentRepository;
-    private final ClearanceAuthorityRepository clearanceAuthorityRepository;
-    private final ClearanceVerificationRepository clearanceVerificationRepository;
 
     public ClearanceRequestService(
             ClearanceRequestRepository clearanceRequestRepository,
-            StudentRepository studentRepository,
-            ClearanceAuthorityRepository clearanceAuthorityRepository,
-            ClearanceVerificationRepository clearanceVerificationRepository) {
+            StudentRepository studentRepository) {
 
         this.clearanceRequestRepository = clearanceRequestRepository;
         this.studentRepository = studentRepository;
-        this.clearanceAuthorityRepository = clearanceAuthorityRepository;
-        this.clearanceVerificationRepository = clearanceVerificationRepository;
     }
 
     // CREATE THROUGH REST API
@@ -63,7 +51,6 @@ public class ClearanceRequestService {
     @Transactional
     public ClearanceRequest applyForClearance(Long studentId) {
 
-        // Find student
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() ->
                         new StudentNotFoundException(
@@ -87,42 +74,15 @@ public class ClearanceRequestService {
             );
         }
 
-        // Get all clearance authorities
-        List<ClearanceAuthority> authorities =
-                clearanceAuthorityRepository.findAll();
-
-        if (authorities.isEmpty()) {
-            throw new IllegalStateException(
-                    "No clearance authorities are available."
-            );
-        }
-
-        // Create clearance request
+        // Create only the main application
         ClearanceRequest request = new ClearanceRequest();
+
         request.setStudent(student);
-        request.setRequestDate(java.time.LocalDateTime.now());
+        request.setRequestDate(LocalDateTime.now());
         request.setOverallStatus(ClearanceStatus.PENDING);
         request.setCompletionDate(null);
 
-        ClearanceRequest savedRequest =
-                clearanceRequestRepository.save(request);
-
-        // Create verification for every authority
-        for (ClearanceAuthority authority : authorities) {
-
-            ClearanceVerification verification =
-                    new ClearanceVerification();
-
-            verification.setClearanceRequest(savedRequest);
-            verification.setAuthority(authority);
-            verification.setStatus(ClearanceStatus.PENDING);
-            verification.setVerifiedBy(null);
-            verification.setVerifiedDate(null);
-
-            clearanceVerificationRepository.save(verification);
-        }
-
-        return savedRequest;
+        return clearanceRequestRepository.save(request);
     }
 
     // GET ALL
@@ -180,14 +140,15 @@ public class ClearanceRequestService {
 
         clearanceRequestRepository.delete(existingRequest);
     }
-    
+
+    // GET REQUESTS BY STUDENT
     @Transactional(readOnly = true)
     public List<ClearanceRequest> getRequestsByStudentId(Long studentId) {
+
         return clearanceRequestRepository
                 .findByStudent_IdOrderByRequestDateDesc(studentId);
     }
-    
-    
+
     // STUDENT DASHBOARD STATISTICS
     public Map<String, Long> getStudentRequestStatistics(Long studentId) {
 
@@ -196,15 +157,18 @@ public class ClearanceRequestService {
 
         long completed = clearanceRequestRepository
                 .countByStudent_IdAndOverallStatus(
-                        studentId, ClearanceStatus.CLEARED);
+                        studentId, ClearanceStatus.CLEARED
+                );
 
         long pending = clearanceRequestRepository
                 .countByStudent_IdAndOverallStatus(
-                        studentId, ClearanceStatus.PENDING);
+                        studentId, ClearanceStatus.PENDING
+                );
 
         long rejected = clearanceRequestRepository
                 .countByStudent_IdAndOverallStatus(
-                        studentId, ClearanceStatus.REJECTED);
+                        studentId, ClearanceStatus.REJECTED
+                );
 
         return Map.of(
                 "total", total,
